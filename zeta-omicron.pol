@@ -197,9 +197,5 @@ wrap_up
 
 # TODO:
 # * installer image banners
-# * use $C_DRIVE_DIR everywhere
 # * fully translatable user-facing strings
-# * support addon packs
-# * code reduction
 # * offer to backup save file
-# * offer to install a mod after fresh install
