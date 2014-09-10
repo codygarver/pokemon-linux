@@ -1,0 +1,205 @@
+#!/bin/bash
+# Date : (2014-08-05 22-30)
+# Last revision : (2014-08-09 17-39)
+# Wine version used : 1.7.26
+# Distribution used to test : elementary OS Freya
+# Author : Cody Garver <cody@elementaryos.org>
+# Depend: unzip unrar
+
+[ "$PLAYONLINUX" = "" ] && exit 0
+source "$PLAYONLINUX/lib/sources"
+
+INSTALLER_TITLE="Pokemon Zeta/Omicron Installer"
+GAME_HOMEPAGE="http://pokemonzo.cmdrd.com"
+GAME_AUTHOR="thesuzerain and Sir_Willis_CMS"
+SCRIPT_AUTHOR="Cody Garver <cody@elementaryos.org>"
+
+# Last known versions
+WINE_VERSION="1.7.26"
+GAME_VERSION="1.4.10"
+GAME_EXE="Game.exe"
+
+##### Last known URLs & MD5s #####
+
+# Clients
+OMICRON_MD5="08b9bd2a83c290d4b51f218696a28d69" # Pokemon Omicron client
+ZETA_MD5="3be520eee83ef7c42988c74016a96ef7" # Pokemon Zeta client
+# Black and White Battle GUI Pack
+BW_BATTLE_GUI_PACK_URL="http://cmdrd.com:40000/zomirror/community/BW%20Menu%20-WIP-.rar"
+BW_BATTLE_GUI_PACK_MD5="962c96915405ad9c9d4d1118e39e1862"
+# XY 3D Pokemon Sprite pack
+XY_3D_SPRITE_PACK_URL="http://cmdrd.com:40000/zomirror/community/XY%20Animated%20Sprite%20Sharpened%20125%20175b.rar"
+XY_3D_SPRITE_PACK_MD5="ae5e9a35b3cfb17100d439bda9b76bbb"
+
+# Init
+
+cfg_check
+
+POL_SetupWindow_Init
+POL_Debug_Init
+
+check_one "unzip" "unrar"
+POL_SetupWindow_missing
+
+POL_SetupWindow_menu "What version of this game do you want to use?" "$INSTALLER_TITLE" "Omicron~Zeta" "~"
+GAME_NAME="$APP_ANSWER"
+TITLE="Pokemon $GAME_NAME"
+PREFIX="Pokemon$GAME_NAME"
+GAME_URL="http://pokemonzo.cmdrd.com/releases/$GAME_VERSION/Pokemon%20$GAME_NAME%201.4%20%28Win%29.zip"
+
+# TODO:
+# Grab fresh download data before setting related variables
+# UPDATE_LIST_URL= "http://github/poke/updates"
+# wget $UPDATE_LIST_URL -O "$POL_System_TmpDir"/updates.txt
+# source "$POL_System_TmpDir"/updates.txt
+
+POL_Wine_SelectPrefix "$PREFIX"
+POL_System_TmpCreate "$PREFIX"
+cd "$POL_System_TmpDir" # possibly unecessary
+
+PROGRAM_FILES_DIR="$REPERTOIRE/wineprefix/$PREFIX/drive_c/Program Files"
+
+#POL_SetupWindow_presentation "$GAME_NAME Installer" "$GAME_AUTHOR" "$GAME_HOMEPAGE" "$SCRIPT_AUTHOR" "$PREFIX"
+
+function browse_install_mod () {
+    POL_SetupWindow_browse "Please select the mod's .rar file." "$TITLE installation"
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    PACKED_RAR="$APP_ANSWER"
+    unrar x -v -o+ "$PACKED_RAR" "$PROGRAM_FILES_DIR/$PREFIX/Graphics" || POL_Debug_Fatal "Could not extract .rar archive "$PACKED_RAR" to "$GRAPHICS_DIR"! Is unrar installed?"
+    POL_Wine_WaitExit "$TITLE"
+} # End browse install mod
+
+function download_mod () {
+    cd "$POL_System_TmpDir"
+    POL_Download "$MOD_URL" "$MOD_MD5"
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    PACKED_RAR="$POL_System_TmpDir"/*.rar
+    unrar x -v -o+ "$PACKED_RAR" "$PROGRAM_FILES_DIR/$PREFIX/Graphics" || POL_Debug_Fatal "Could not extract .rar archive "$PACKED_RAR" to "$GRAPHICS_DIR"! Is unrar installed?"
+    POL_Wine_WaitExit "$TITLE"
+} # End download mod
+
+function install_fonts () {
+    GAME_FONTS_DIR="$PROGRAM_FILES_DIR/$PREFIX/Fonts"
+    WINDOWS_FONTS_DIR="$REPERTOIRE/wineprefix/$PREFIX/drive_c/windows/Fonts"
+    cp "$GAME_FONTS_DIR"/*.ttf "$WINDOWS_FONTS_DIR" || POL_Debug_Fatal "Failed to copy "$GAME_FONTS_DIR"/*.ttf to "$WINDOWS_FONTS_DIR"!"
+} # End install fonts
+
+function install_game () {
+    cd "$PROGRAM_FILES_DIR" || POL_Debug_Fatal "Could not change dir to "$PROGRAM_FILES_DIR"!"
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unzip -qqo "$GAME_ZIP" || POL_Debug_Fatal "Could not extract $GAME_ZIP archive!"
+    POL_Wine_WaitExit "$TITLE"
+
+    # Rename game folder to ease scripting
+    rm -rf "$PROGRAM_FILES_DIR"/$PREFIX
+    mv "$PROGRAM_FILES_DIR"/*Pokemon\ Omicron*Win*/ "$PROGRAM_FILES_DIR"/"$PREFIX"
+
+    # Create shortcut
+    if [ "$FRESH_INSTALL" = "true" ] ; then
+        POL_Shortcut "$GAME_EXE" "$TITLE"
+    fi
+    
+    install_fonts
+
+    # Mod menu
+    MOD_INSTALL="true"
+} # End install game
+
+function receive_game () {
+    if [ "$GAME_NAME" = "Omicron" ] ; then
+        GAME_MD5=$OMICRON_MD5
+    elif [ "$GAME_NAME" = "Zeta" ; then
+        GAME_MD5=$ZETA_MD5
+    fi
+
+    POL_SetupWindow_InstallMethod "LOCAL,DOWNLOAD"
+
+    if [ "$INSTALL_METHOD" = "LOCAL" ] ; then
+        POL_SetupWindow_browse "Please select the $TITLE .zip file." "$TITLE installation"
+        POL_SetupWindow_wait "Installation in progress." "$TITLE installation"
+        GAME_ZIP="$APP_ANSWER"
+    elif [ "$INSTALL_METHOD" = "DOWNLOAD" ] ; then
+        cd "$POL_System_TmpDir" || POL_Debug_Fatal "Could not change dir to "$POL_System_TmpDir"!"
+        POL_Download "$GAME_URL" "$GAME_MD5"
+        GAME_ZIP="$POL_System_TmpDir/*.zip"
+    fi
+} # End receive game
+
+function prefix_check () {
+    if [ "$(POL_Wine_PrefixExists "$PREFIX")" = "True" ] ; then
+        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Update the game~Install a mod" "~"
+
+        if [ "$APP_ANSWER" = "Update the game" ] ; then
+            UPDATE_INSTALL="true"
+        elif [ "$APP_ANSWER" = "Install a mod" ] ; then
+            MOD_INSTALL="true"
+        fi # end action check
+        
+    elif [ "$(POL_Wine_PrefixExists "$PREFIX")" = "False" ] ; then
+        POL_Wine_PrefixCreate "$WINE_VERSION"
+
+        FRESH_INSTALL="true"
+    fi
+} # End prefix check
+
+function wrap_up () {
+    POL_System_TmpDelete
+    POL_SetupWindow_Close
+    exit
+} # End wrap up
+
+##### INSTALL GAME #####
+
+prefix_check
+
+# Install game
+if [ "$FRESH_INSTALL" = "true" ] || [ "$UPDATE_INSTALL" = "true" ] ; then
+    receive_game
+    install_game
+fi
+
+##### INSTALL MOD #####
+
+# Offer mod menu
+if [ "$MOD_INSTALL" = "true" ] ; then
+    POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Evolemon's Sprite Pack~MellyShy's Sprite Overhaul Pack~Something Else~Do Nothing" "~"
+    MOD_NAME="$APP_ANSWER"
+fi
+
+# Determine mod download URL and MD5; uses this as mirror: http://cmdrd.com:40000/zomirror/community/
+if [ "$MOD_NAME" = "Black and White Battle GUI Pack" ] ; then
+    MOD_URL="$BW_BATTLE_GUI_PACK_URL"
+    MOD_MD5="$BW_BATTLE_GUI_PACK_MD5"
+elif [ "$MOD_NAME" = "XY 3D Pokemon Sprite Pack" ] ; then
+    MOD_URL="$XY_3D_SPRITE_PACK_URL"
+    MOD_MD5="$XY_3D_SPRITE_PACK_MD5"
+elif [ "$MOD_NAME" = "Evolemon's Sprite Pack" ] ; then
+    MOD_URL="$BW_BATTLE_GUI_PACK_URL"
+    MOD_MD5="$BW_BATTLE_GUI_PACK_MD5"
+elif [ "$MOD_NAME" = "MellyShy's Sprite Overhaul Pack" ] ; then
+    MOD_URL="$BW_BATTLE_GUI_PACK_URL"
+    MOD_MD5="$BW_BATTLE_GUI_PACK_MD5"
+elif [ "$MOD_NAME" = "Do Nothing" ] ; then
+    wrap_up
+fi
+
+# Download a mod
+if [ "$MOD_INSTALL" = "true" ] && [ "$MOD_NAME" != "" ] && [ "$MOD_NAME" != "Something Else" ] ; then
+    download_mod
+# Or browse filesystem for .rar
+elif [ "$MOD_NAME" = "Something Else" ] ; then
+    browse_install_mod
+fi
+
+##### END #####
+
+wrap_up
+
+# TODO:
+# * installer image banners
+# * use $C_DRIVE_DIR everywhere
+# * fully translatable user-facing strings
+# * support addon packs
+# * code reduction
+# * offer to backup save file
+# * offer to install a mod after fresh install
