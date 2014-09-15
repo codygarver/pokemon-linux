@@ -1,0 +1,231 @@
+#!/bin/bash
+# License: BSD 3-Clause License
+# Date : (2014-08-05 22-30)
+# Last revision : (2014-08-09 17-39)
+# Wine version used : 1.7.26
+# Distribution used to test : elementary OS Freya
+# Author : Cody Garver <cody@elementaryos.org>
+# Depend: unzip unrar
+
+[ "$PLAYONLINUX" = "" ] && exit 0
+source "$PLAYONLINUX/lib/sources"
+
+INSTALLER_TITLE="Pokemon Linux Installer"
+SCRIPT_AUTHOR="Cody Garver <cody@elementaryos.org>"
+WINE_VERSION="1.7.26"
+
+##### URLs & MD5s #####
+
+ZETA_OMICRON_CLIENT_MIRROR="http://pokemonzo.cmdrd.com/releases"
+ZETA_OMICRON_COMMUNITY_MIRROR="http://cmdrd.com:40000/zomirror/community"
+
+# Pokemon Zeta & Pokemon Omicron clients
+OMICRON_MD5="08b9bd2a83c290d4b51f218696a28d69"
+ZETA_MD5="3be520eee83ef7c42988c74016a96ef7"
+ZETA_OMICRON_AUTHOR="thesuzerain and Sir_Willis_CMS"
+ZETA_OMICRON_HOMEPAGE="http://pokemonzo.cmdrd.com"
+ZETA_OMICRON_VERSION="1.4.10"
+# ZETA_OMICRON_CLIENT_URL not set because $GAME_NAME not set
+
+# Black and White Battle GUI Pack
+BW_BATTLE_GUI_PACK_URL="$ZETA_OMICRON_COMMUNITY_MIRROR/BW%20Menu%20-WIP-.rar"
+BW_BATTLE_GUI_PACK_MD5="962c96915405ad9c9d4d1118e39e1862"
+
+# Evolemon's Sprite Pack
+EVOLMONS_SPRITE_PACK_URL=""
+EVOLMONS_SPRITE_PACK_MD5=""
+
+# MellyShy's Sprite Overhaul Pack
+MELLYSHYS_SPRITE_PACK_URL=""
+MELLYSHYS_SPRITE_PACK_MD5=""
+
+# XY 3D Pokemon Sprite Pack
+XY_3D_SPRITE_PACK_URL="$ZETA_OMICRON_COMMUNITY_MIRROR/XY%20Animated%20Sprite%20Sharpened%20125%20175b.rar"
+XY_3D_SPRITE_PACK_MD5="ae5e9a35b3cfb17100d439bda9b76bbb"
+
+##### INIT #####
+
+cfg_check
+
+POL_SetupWindow_Init
+POL_Debug_Init
+
+check_one "unzip" "unzip"
+check_one "unrar" "unrar"
+POL_SetupWindow_missing
+
+POL_SetupWindow_menu "What version of this game do you want to use?" "$INSTALLER_TITLE" "Melanite~Omicron~Zeta" "~"
+GAME_NAME="$APP_ANSWER"
+TITLE="Pokemon $GAME_NAME"
+PREFIX="Pokemon$GAME_NAME"
+
+# Zeta/Omicron URL set now because $GAME_NAME was just discovered
+ZETA_OMICRON_CLIENT_URL="$ZETA_OMICRON_CLIENT_MIRROR/$ZETA_OMICRON_VERSION/Pokemon%20$GAME_NAME%201.4%20%28Win%29.zip"
+
+POL_Wine_SelectPrefix "$PREFIX"
+POL_System_TmpCreate "$PREFIX"
+
+#POL_SetupWindow_presentation "$GAME_NAME Installer" "$ZETA_OMICRON_AUTHOR" "$ZETA_OMICRON_HOMEPAGE" "$SCRIPT_AUTHOR" "$PREFIX"
+
+function browse_mod () {
+    POL_SetupWindow_browse "Please select the mod's .rar file." "$TITLE installation"
+    PACKED_RAR="$APP_ANSWER"
+} # End browse install mod
+
+function download_mod () {
+    cd "$POL_System_TmpDir"
+    POL_Download "$MOD_URL" "$MOD_MD5"
+    PACKED_RAR="$POL_System_TmpDir"/*.rar
+} # End download mod
+
+function get_mod_info () {
+    if [ "$MOD_NAME" = "Black and White Battle GUI Pack" ] ; then
+        MOD_URL="$BW_BATTLE_GUI_PACK_URL"
+        MOD_MD5="$BW_BATTLE_GUI_PACK_MD5"
+    elif [ "$MOD_NAME" = "XY 3D Pokemon Sprite Pack" ] ; then
+        MOD_URL="$XY_3D_SPRITE_PACK_URL"
+        MOD_MD5="$XY_3D_SPRITE_PACK_MD5"
+    elif [ "$MOD_NAME" = "Evolemon's Sprite Pack" ] ; then
+        MOD_URL="$EVOLMONS_SPRITE_PACK_URL"
+        MOD_MD5="$EVOLMONS_SPRITE_PACK_MD5"
+    elif [ "$MOD_NAME" = "MellyShy's Sprite Overhaul Pack" ] ; then
+        MOD_URL="$MELLYSHYS_SPRITE_PACK_URL"
+        MOD_MD5="$MELLYSHYS_SPRITE_PACK_MD5"
+    fi
+}
+
+function extract_mod () {
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files/$PREFIX/Graphics" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
+    POL_Wine_WaitExit "$TITLE"
+}
+
+function install_melanite () {
+    POL_SetupWindow_browse "Please select Pokemon Melanite's .rar file." "$TITLE installation"
+    PACKED_RAR="$APP_ANSWER"
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
+    rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    mv "$WINEPREFIX/drive_c/Program Files"/*Pokemon\ */ "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    mv "$WINEPREFIX/drive_c/Program Files"/*.txt "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    POL_Wine_WaitExit "$TITLE"
+}
+
+function install_game () {
+
+    if [ "$GAME_NAME" != "Melanite" ] ; then
+        install_zeta_omicron
+    else
+        install_melanite
+    fi
+
+    cp "$WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts"/*.ttf "$WINEPREFIX/drive_c/windows/Fonts" || POL_Debug_Fatal "Failed to copy $WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts/*.ttf to system fonts!"
+
+    # Create shortcut
+    if [ "$FRESH_INSTALL" = "true" ] ; then
+        POL_Shortcut "Game.exe" "$TITLE"
+    fi
+
+    # Enable mod menu
+    MOD_INSTALL="true"
+} # End install game
+
+function install_zeta_omicron () {
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unzip -qqo "$GAME_ZIP" || POL_Debug_Fatal "Could not extract $GAME_ZIP to $WINEPREFIX/drive_c/Program Files/$PREFIX archive!"
+    POL_Wine_WaitExit "$TITLE"
+
+    # Remove old game folder for lazy scripting
+    rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    mv "Pokemon "*Win* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+}
+
+function prefix_check () {
+    if [ "$(POL_Wine_PrefixExists "$PREFIX")" = "True" ] ; then
+        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Update the game~Install a mod" "~"
+
+        if [ "$APP_ANSWER" = "Update the game" ] ; then
+            UPDATE_INSTALL="true"
+        elif [ "$APP_ANSWER" = "Install a mod" ] ; then
+            MOD_INSTALL="true"
+        fi # End action check
+        
+    elif [ "$(POL_Wine_PrefixExists "$PREFIX")" = "False" ] ; then
+        POL_Wine_PrefixCreate "$WINE_VERSION"
+
+        FRESH_INSTALL="true"
+    fi
+} # End prefix check
+
+function receive_game () {
+    if [ "$GAME_NAME" = "Zeta" ; then
+        GAME_MD5=$ZETA_MD5
+    elif [ "$GAME_NAME" = "Omicron" ; then
+        GAME_MD5=$OMICRON_MD5
+    fi
+
+    POL_SetupWindow_InstallMethod "LOCAL,DOWNLOAD"
+
+    if [ "$INSTALL_METHOD" = "LOCAL" ] ; then
+        POL_SetupWindow_browse "Please select the $TITLE .zip file." "$TITLE installation"
+        POL_SetupWindow_wait "Installation in progress." "$TITLE installation"
+        GAME_ZIP="$APP_ANSWER"
+    elif [ "$INSTALL_METHOD" = "DOWNLOAD" ] ; then
+        cd "$POL_System_TmpDir" || POL_Debug_Fatal "Could not change dir to $POL_System_TmpDir!"
+        POL_Download "$ZETA_OMICRON_CLIENT_URL" "$GAME_MD5"
+        GAME_ZIP="$POL_System_TmpDir/*.zip"
+    fi
+} # End receive game
+
+function wrap_up () {
+    POL_System_TmpDelete
+    POL_SetupWindow_Close
+    exit
+} # End wrap up
+
+prefix_check
+
+##### INSTALL GAME #####
+
+if [ "$FRESH_INSTALL" = "true" ] || [ "$UPDATE_INSTALL" = "true" ] ; then
+    # Melanite client direct download not supported, no known static URL
+    if [ "$GAME_NAME" != "Melanite" ] ; then
+        receive_game
+    fi
+    
+    install_game
+fi
+
+##### INSTALL MOD #####
+
+if [ "$MOD_INSTALL" = "true" ] ; then
+    #POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Evolemon's Sprite Pack~MellyShy's Sprite Overhaul Pack~Other .RAR~None" "~"
+    POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Other .RAR~None" "~"
+    MOD_NAME="$APP_ANSWER"
+    get_mod_info
+
+    # Either finish
+    if [ "$MOD_NAME" = "None" ] ; then
+        wrap_up
+    # Or download a mod
+    elif [ "$MOD_NAME" != "" ] &&  [ "$MOD_NAME" != "Other .RAR" ] ; then
+        download_mod
+        extract_mod
+    # Or browse filesystem for .rar
+    elif [ "$MOD_NAME" = "Other .RAR" ] ; then
+        browse_mod
+        extract_mod
+    fi
+fi
+
+##### END #####
+
+wrap_up
+
+# TODO:
+# * patches
+# * installer image banners
+# * fully translatable user-facing strings
+# * offer to backup save file
+# * succesfully use $PROGRAMFILES
+# * wget and source fresh download variables
