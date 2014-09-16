@@ -78,6 +78,12 @@ function download_mod () {
     PACKED_RAR="$POL_System_TmpDir"/*.rar
 } # End download mod
 
+function extract_mod () {
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files/$PREFIX/Graphics" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
+    POL_Wine_WaitExit "$TITLE"
+}
+
 function get_mod_info () {
     if [ "$MOD_NAME" = "Black and White Battle GUI Pack" ] ; then
         MOD_URL="$BW_BATTLE_GUI_PACK_URL"
@@ -94,32 +100,14 @@ function get_mod_info () {
     fi
 }
 
-function extract_mod () {
-    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
-    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files/$PREFIX/Graphics" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
-    POL_Wine_WaitExit "$TITLE"
-}
-
-function install_melanite () {
-    POL_SetupWindow_browse "Please select Pokemon Melanite's .rar file." "$TITLE installation"
-    PACKED_RAR="$APP_ANSWER"
-    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
-    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
-    rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-    mv "$WINEPREFIX/drive_c/Program Files"/*Pokemon\ */ "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-    mv "$WINEPREFIX/drive_c/Program Files"/*.txt "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-    POL_Wine_WaitExit "$TITLE"
-}
-
 function install_game () {
-
     if [ "$GAME_NAME" != "Melanite" ] ; then
         install_zeta_omicron
     else
         install_melanite
     fi
 
-    cp "$WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts"/*.ttf "$WINEPREFIX/drive_c/windows/Fonts" || POL_Debug_Fatal "Failed to copy $WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts/*.ttf to system fonts!"
+    cp "$WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts"/*.ttf "$WINEPREFIX/drive_c/windows/Fonts" || POL_Debug_Fatal "Failed to copy $WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts/*.ttf to Wine prefix fonts!"
 
     # Create shortcut
     if [ "$FRESH_INSTALL" = "true" ] ; then
@@ -130,24 +118,71 @@ function install_game () {
     MOD_INSTALL="true"
 } # End install game
 
-function install_zeta_omicron () {
-    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
-    unzip -qqo "$GAME_ZIP" || POL_Debug_Fatal "Could not extract $GAME_ZIP to $WINEPREFIX/drive_c/Program Files/$PREFIX archive!"
-    POL_Wine_WaitExit "$TITLE"
+function install_melanite () {
+    # Ask for game data archive
+    POL_SetupWindow_browse "Please select the $TITLE .rar file." "$TITLE installation"
+    PACKED_RAR="$APP_ANSWER"
 
-    # Remove old game folder for lazy scripting
+    # Extract game data archive
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unrar x -v -o+ "$PACKED_RAR" "$WINEPREFIX/drive_c/Program Files" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
+
+    # Remove old game data for lazy scripting
     rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-    mv "Pokemon "*Win* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+
+    # Install extracted game data
+    mv "$WINEPREFIX/drive_c/Program Files/Pokemon Melanite" "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    mv "$WINEPREFIX/drive_c/Program Files"/*.txt "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+
+    POL_Wine_WaitExit "$TITLE"
 }
+
+function install_zeta_omicron () {
+    # Extract game data archive
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unzip -qqo "$GAME_ZIP" || POL_Debug_Fatal "Could not extract $GAME_ZIP archive!"
+
+    # Remove old game data for lazy scripting
+    rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+
+    # Install extracted game data
+    mv "Pokemon "*Win* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    
+    POL_Wine_WaitExit "$TITLE"
+} # End install zeta omicron
+
+function patch_game () {
+    # Ask for game data archive
+    POL_SetupWindow_browse "Please select the $TITLE .rar file." "$TITLE installation"
+    PACKED_RAR="$APP_ANSWER"
+
+    # Extract game data archive
+    POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
+    unrar x -v -o+ "$PACKED_RAR" "$POL_System_TmpDir" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
+
+    # Remove old game data for lazy scripting
+    #rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+
+    # Rename game data dir
+    #mv "Pokemon Melanite" $PREFIX
+
+    # Install extracted game data
+    mv $POL_System_TmpDir/*/* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    #mv "$WINEPREFIX/drive_c/Program Files"/*.txt "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+
+    POL_Wine_WaitExit "$TITLE"
+} # End patch game
 
 function prefix_check () {
     if [ "$(POL_Wine_PrefixExists "$PREFIX")" = "True" ] ; then
-        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Update the game~Install a mod" "~"
+        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Update the game~Patch the game~Install a mod" "~"
 
         if [ "$APP_ANSWER" = "Update the game" ] ; then
             UPDATE_INSTALL="true"
         elif [ "$APP_ANSWER" = "Install a mod" ] ; then
             MOD_INSTALL="true"
+        elif [ "$APP_ANSWER" = "Patch the game" ] ; then
+            PATCH_INSTALL="true"
         fi # End action check
         
     elif [ "$(POL_Wine_PrefixExists "$PREFIX")" = "False" ] ; then
@@ -192,8 +227,10 @@ if [ "$FRESH_INSTALL" = "true" ] || [ "$UPDATE_INSTALL" = "true" ] ; then
     if [ "$GAME_NAME" != "Melanite" ] ; then
         receive_game
     fi
-    
+
     install_game
+elif [ "$PATCH_INSTALL" = "true" ] ; then
+    patch_game
 fi
 
 ##### INSTALL MOD #####
@@ -229,3 +266,4 @@ wrap_up
 # * offer to backup save file
 # * succesfully use $PROGRAMFILES
 # * wget and source fresh download variables
+# * consistent variable name for PACKED_RAR and GAME_ZIP
