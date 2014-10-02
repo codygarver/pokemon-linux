@@ -10,7 +10,7 @@
 [ "$PLAYONLINUX" = "" ] && exit 0
 source "$PLAYONLINUX/lib/sources"
 
-INSTALLER_TITLE="Pokemon Linux Installer"
+INSTALLER_TITLE="Pokemon Linux"
 SCRIPT_AUTHOR="Cody Garver <cody@elementaryos.org>"
 WINE_VERSION="1.7.26"
 
@@ -50,27 +50,30 @@ cfg_check
 POL_SetupWindow_Init
 POL_Debug_Init
 
+# No idea how or if this dependency check works
 check_one "unzip" "unzip"
 check_one "unrar" "unrar"
 POL_SetupWindow_missing
 
+# Name of the game
 POL_SetupWindow_menu "What version of this game do you want to use?" "$INSTALLER_TITLE" "Melanite~Omicron~Zeta" "~"
 GAME_NAME="$APP_ANSWER"
 TITLE="Pokemon $GAME_NAME"
 PREFIX="Pokemon$GAME_NAME"
 
-# Zeta/Omicron URL set now because $GAME_NAME was just discovered
+# Zeta/Omicron URL set here because $GAME_NAME was just now discovered
 ZETA_OMICRON_CLIENT_URL="$ZETA_OMICRON_CLIENT_MIRROR/$ZETA_OMICRON_VERSION/Pokemon%20$GAME_NAME%201.4%20%28Win%29.zip"
 
 POL_Wine_SelectPrefix "$PREFIX"
 POL_System_TmpCreate "$PREFIX"
 
+# Installer splash screen
 #POL_SetupWindow_presentation "$GAME_NAME Installer" "$ZETA_OMICRON_AUTHOR" "$ZETA_OMICRON_HOMEPAGE" "$SCRIPT_AUTHOR" "$PREFIX"
 
 function browse_mod () {
     POL_SetupWindow_browse "Please select the mod's .rar file." "$TITLE installation"
     PACKED_RAR="$APP_ANSWER"
-} # End browse install mod
+} # End browse mod
 
 function download_mod () {
     cd "$POL_System_TmpDir"
@@ -107,6 +110,7 @@ function install_game () {
         install_melanite
     fi
 
+    # Install fonts
     cp "$WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts"/*.ttf "$WINEPREFIX/drive_c/windows/Fonts" || POL_Debug_Fatal "Failed to copy $WINEPREFIX/drive_c/Program Files/$PREFIX/Fonts/*.ttf to Wine prefix fonts!"
 
     # Create shortcut
@@ -158,33 +162,25 @@ function patch_game () {
 
     # Extract game data archive
     POL_SetupWindow_wait "$(eval_gettext 'Please wait while we extract $TITLE game data.')" "$TITLE"
-    unrar x -v -o+ "$PACKED_RAR" "$POL_System_TmpDir" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
-
-    # Remove old game data for lazy scripting
-    #rm -rf "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-
-    # Rename game data dir
-    #mv "Pokemon Melanite" $PREFIX
+    cd "$POL_System_TmpDir"
+    unrar x -v -o+ "$PACKED_RAR" || POL_Debug_Fatal "Could not extract .rar archive! Is unrar installed?"
 
     # Install extracted game data
-    mv $POL_System_TmpDir/*/* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
-    #mv "$WINEPREFIX/drive_c/Program Files"/*.txt "$WINEPREFIX/drive_c/Program Files/$PREFIX"
+    cp -r $POL_System_TmpDir/*/* "$WINEPREFIX/drive_c/Program Files/$PREFIX"
 
     POL_Wine_WaitExit "$TITLE"
 } # End patch game
 
 function prefix_check () {
     if [ "$(POL_Wine_PrefixExists "$PREFIX")" = "True" ] ; then
-        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Update the game~Patch the game~Install a mod" "~"
+        POL_SetupWindow_menu "What do you want with $TITLE?" "$INSTALLER_TITLE" "Patch the game~Install a mod" "~"
 
-        if [ "$APP_ANSWER" = "Update the game" ] ; then
-            UPDATE_INSTALL="true"
-        elif [ "$APP_ANSWER" = "Install a mod" ] ; then
+        if [ "$APP_ANSWER" = "Install a mod" ] ; then
             MOD_INSTALL="true"
         elif [ "$APP_ANSWER" = "Patch the game" ] ; then
             PATCH_INSTALL="true"
         fi # End action check
-        
+
     elif [ "$(POL_Wine_PrefixExists "$PREFIX")" = "False" ] ; then
         POL_Wine_PrefixCreate "$WINE_VERSION"
 
@@ -212,17 +208,17 @@ function receive_game () {
     fi
 } # End receive game
 
-function wrap_up () {
+function clean_up () {
     POL_System_TmpDelete
     POL_SetupWindow_Close
     exit
-} # End wrap up
+} # End clean up
 
 prefix_check
 
 ##### INSTALL GAME #####
 
-if [ "$FRESH_INSTALL" = "true" ] || [ "$UPDATE_INSTALL" = "true" ] ; then
+if [ "$FRESH_INSTALL" = "true" ] ; then
     # Melanite client direct download not supported, no known static URL
     if [ "$GAME_NAME" != "Melanite" ] ; then
         receive_game
@@ -236,20 +232,20 @@ fi
 ##### INSTALL MOD #####
 
 if [ "$MOD_INSTALL" = "true" ] ; then
-    #POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Evolemon's Sprite Pack~MellyShy's Sprite Overhaul Pack~Other .RAR~None" "~"
-    POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Other .RAR~None" "~"
+    #POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Evolemon's Sprite Pack~MellyShy's Sprite Overhaul Pack~Other .rar~None" "~"
+    POL_SetupWindow_menu "Which $TITLE mod do you want to install?" "$INSTALLER_TITLE" "Black and White Battle GUI Pack~XY 3D Pokemon Sprite Pack~Other .rar~None" "~"
     MOD_NAME="$APP_ANSWER"
     get_mod_info
 
     # Either finish
     if [ "$MOD_NAME" = "None" ] ; then
-        wrap_up
+        clean_up
     # Or download a mod
-    elif [ "$MOD_NAME" != "" ] &&  [ "$MOD_NAME" != "Other .RAR" ] ; then
+    elif [ "$MOD_NAME" != "" ] && [ "$MOD_NAME" != "Other .rar" ] ; then
         download_mod
         extract_mod
-    # Or browse filesystem for .rar
-    elif [ "$MOD_NAME" = "Other .RAR" ] ; then
+    # Or browse filesystem for a mod .rar
+    elif [ "$MOD_NAME" = "Other .rar" ] ; then
         browse_mod
         extract_mod
     fi
@@ -257,13 +253,13 @@ fi
 
 ##### END #####
 
-wrap_up
+clean_up
 
 # TODO:
 # * patches
 # * installer image banners
 # * fully translatable user-facing strings
 # * offer to backup save file
-# * succesfully use $PROGRAMFILES
+# * successfully use $PROGRAMFILES
 # * wget and source fresh download variables
 # * consistent variable name for PACKED_RAR and GAME_ZIP
