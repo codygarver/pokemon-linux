@@ -18,7 +18,8 @@ Supported Mod Packs
 
 * [Black and White Battle GUI](http://www.reddit.com/r/pokemonzetaomicron/comments/1xbnoi/black_white_texture_pack_updated/)
 * [3D XY Sprites](http://www.reddit.com/r/pokemonzetaomicron/comments/26o09e/resource_pokemon_xy_animated_gifs_resized_and/)
-<!-- These are not yet supported:
+<!--
+These are not yet supported:
 * [Evolemon's Sprites](http://www.reddit.com/r/pokemonzetaomicron/comments/2ea4rq/estetic_gui_pack/)
 * [MellyShy's Sprites](http://www.reddit.com/r/pokemonzetaomicron/comments/2609cf/mellys_zetaomicron_interface_overhaul/)
 -->
