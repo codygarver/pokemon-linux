@@ -1,5 +1,5 @@
-Pokemon Linux a.k.a. PlayPokemonOnLinux
-=======================================
+Pokemon Linux
+=============
 
 ## Play Pokemon fan games on Linux and Mac
 
