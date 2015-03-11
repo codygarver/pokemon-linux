@@ -189,9 +189,9 @@ function prefix_check () {
 } # End prefix check
 
 function receive_game () {
-    if [ "$GAME_NAME" = "Zeta" ; then
+    if [ "$GAME_NAME" = "Zeta" ] ; then
         GAME_MD5=$ZETA_MD5
-    elif [ "$GAME_NAME" = "Omicron" ; then
+    elif [ "$GAME_NAME" = "Omicron" ] ; then
         GAME_MD5=$OMICRON_MD5
     fi
 
